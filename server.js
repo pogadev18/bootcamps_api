@@ -5,6 +5,12 @@ const morgan = require('morgan');
 const colors = require('colors');
 const fileupload = require('express-fileupload');
 const cookieParser = require('cookie-parser');
+const mongoSanitize = require('express-mongo-sanitize');
+const helmet = require('helmet');
+const xss = require('xss-clean');
+const rateLimit = require('express-rate-limit');
+const hpp = require('hpp');
+const cors = require('cors');
 
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/error');
@@ -39,6 +45,30 @@ if (process.env.NODE_ENV === 'development') {
 app.use(fileupload({
   useTempFiles: true
 }));
+
+// sanitize data
+app.use(mongoSanitize());
+
+// set security headers
+app.use(helmet());
+
+// prevent xss attacks
+app.use(xss());
+
+// rate limiting (make 100 requests per 10 minutes)
+const limiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 minutes window
+  max: 100,
+  message: 'Too many requests were made from this IP, please try again after 10 minutes!'
+});
+
+app.use(limiter);
+
+// prevent http param pollution
+app.use(hpp());
+
+// enable cors
+app.use(cors());
 
 app.use(express.static(path.join(__dirname, 'public')));
 
